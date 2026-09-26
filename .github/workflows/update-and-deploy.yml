@@ -1,0 +1,126 @@
+name: update-and-deploy
+
+# Two clocks, one workflow. Everything is idempotent: a run that finds nothing new is a no-op.
+#   05:17 UTC  the daily story (yesterday's 24 hourly archives). Retries automatically at the later slots if an hour was missing.
+#   every ~6h  the pulse (latest complete hours). GH Archive lags, so this is "a few hours ago", and it says so.
+on:
+  schedule:
+    - cron: "17 5 * * *"
+    - cron: "47 11,17,23 * * *"
+  workflow_dispatch:
+    inputs:
+      backfill_days:
+        description: "Also process this many previous days (first run: 30 seeds the ledger so stories start sooner)"
+        default: "2"
+  push:
+    branches: [main]
+    paths: ["site/**", "pipeline/**", ".github/workflows/**", "requirements.txt"]
+
+permissions:
+  contents: write     # publish the small, history-free `data` branch
+  pages: write
+  id-token: write
+
+concurrency:
+  group: living-internet
+  cancel-in-progress: false   # never kill a run halfway through publishing
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      GH_TOKEN: ${{ github.token }}
+      LI_STORE: "1"
+      BASE_PATH: /${{ github.event.repository.name }}/
+    steps:
+      - uses: actions/checkout@v4
+
+      # Previously published data (stories archive, worlds, graveyard...). Additive: a failed run never loses it.
+      - name: Restore last published data
+        run: |
+          if git ls-remote --exit-code --heads origin data >/dev/null 2>&1; then
+            git fetch --depth=1 origin data
+            mkdir -p site/public/data && git --work-tree=site/public/data checkout FETCH_HEAD -- .
+            git reset -q
+            echo "restored $(find site/public/data -name '*.json' | wc -l) files"
+          else echo "no data branch yet (first run)"; fi
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+
+      - name: Pipeline tests (synthetic fixtures; no network)
+        run: python -m pytest -q
+
+      - name: Restore ledger cache
+        id: ledger-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: state/ledger
+          key: ledger-none
+          restore-keys: ledger-
+
+      - name: "Daily story (exit 3 means held: incomplete or invalid day; previous state untouched)"
+        id: daily
+        run: |
+          set +e
+          python -m pipeline.run --backfill "${{ inputs.backfill_days || 2 }}"
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          [ $rc -eq 0 ] || [ $rc -eq 3 ]
+
+      - name: Pulse
+        run: python -m pipeline.pulse
+
+      - name: Save ledger cache
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: state/ledger
+          key: ledger-${{ github.run_id }}
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: site/package-lock.json }
+
+      - name: Site tests (run against generated demo data, never against production data)
+        working-directory: site
+        run: |
+          npm ci
+          npm test
+          rm -rf test-data
+
+      - name: Build
+        working-directory: site
+        run: npm run build
+
+      - name: Refuse to deploy synthetic or malformed data
+        run: |
+          python - <<'PY'
+          import json, sys, pathlib
+          d = pathlib.Path("site/dist/data")
+          latest = json.loads((d / "latest.json").read_text())
+          assert latest["synthetic"] is False, "synthetic demo data must never be deployed"
+          for p in d.rglob("*.json"): json.loads(p.read_text())
+          print("ok:", latest["date"], latest["events"], "events;", "story:", latest["story_id"])
+          PY
+
+      - name: Publish data branch (single commit, no history growth)
+        run: |
+          d=$(mktemp -d); cp -r site/public/data/. "$d"; cd "$d"
+          git init -q -b data && git config user.name "living-internet" && git config user.email "actions@users.noreply.github.com"
+          git add -A && git commit -q -m "data $(date -u +%FT%TZ)"
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" data
+
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site/dist }
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
