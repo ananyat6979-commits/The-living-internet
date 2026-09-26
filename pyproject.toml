@@ -1,0 +1,13 @@
+[project]
+name = "living-internet"
+version = "1.0.0"
+description = "A daily-updating data documentary about public human creation, built only from observed GH Archive events."
+requires-python = ">=3.10,<3.14"
+dependencies = ["duckdb>=1.1", "pyarrow>=15", "numpy>=1.26"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
