@@ -34,7 +34,7 @@ jobs:
       LI_STORE: "1"
       BASE_PATH: /${{ github.event.repository.name }}/
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Previously published data (stories archive, worlds, graveyard...). Additive: a failed run never loses it.
       - name: Restore last published data
