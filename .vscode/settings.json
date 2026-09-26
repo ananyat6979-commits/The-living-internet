@@ -1,0 +1,9 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": ["tests"],
+  "typescript.tsdk": "site/node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "files.exclude": { "**/__pycache__": true, "**/.pytest_cache": true },
+  "search.exclude": { "site/node_modules": true, "site/dist": true, "**/*.lock": true }
+}
