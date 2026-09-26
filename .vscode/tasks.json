@@ -1,0 +1,10 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "1. Install site packages", "type": "shell", "command": "npm --prefix site ci", "problemMatcher": [] },
+    { "label": "2. Make demo data", "type": "shell", "command": "npm --prefix site run demo", "problemMatcher": [] },
+    { "label": "3. Run the site", "type": "shell", "command": "npm --prefix site run dev", "isBackground": true, "problemMatcher": [] },
+    { "label": "Test: pipeline (Python)", "type": "shell", "command": "python -m pytest -q", "problemMatcher": [] },
+    { "label": "Test: site (TypeScript)", "type": "shell", "command": "npm --prefix site test", "problemMatcher": [] }
+  ]
+}
