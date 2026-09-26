@@ -1,0 +1,14 @@
+{
+  "name": "the-living-internet",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Root shortcuts. The web app lives in site/; every script here just runs it there.",
+  "scripts": {
+    "setup": "npm --prefix site ci",
+    "demo": "npm --prefix site run demo",
+    "dev": "npm --prefix site run dev",
+    "test": "npm --prefix site test",
+    "typecheck": "npm --prefix site run typecheck",
+    "build": "npm --prefix site run build"
+  }
+}
