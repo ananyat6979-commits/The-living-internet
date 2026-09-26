@@ -1,0 +1,13 @@
+work/
+state/
+.env
+.env.*
+.venv/
+__pycache__/
+.pytest_cache/
+node_modules/
+site/dist/
+site/public/data/
+site/test-data/
+*.json.gz
+*.part
