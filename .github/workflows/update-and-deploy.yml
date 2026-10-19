@@ -55,7 +55,7 @@ jobs:
 
       - name: Restore ledger cache
         id: ledger-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: state/ledger
           key: ledger-none
@@ -75,7 +75,7 @@ jobs:
 
       - name: Save ledger cache
         if: success()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: state/ledger
           key: ledger-${{ github.run_id }}
