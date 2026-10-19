@@ -80,7 +80,7 @@ jobs:
           path: state/ledger
           key: ledger-${{ github.run_id }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm, cache-dependency-path: site/package-lock.json }
 
       - name: Site tests (run against generated demo data, never against production data)
